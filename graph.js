@@ -13,12 +13,19 @@ User.prototype = {
 		this.client.sadd("user: " + user, fuser);
 	},
 	followers: function(id){
-		this.client.smembers("user: " + id, function(err, obj){
-			console.log(obj);
-		});
+		var ls = [];
+		this.client.smembers("user: " + id, redis.print);
+		console.log(this.client.script('load', 'return 1'));
+		return ls;
+	},
+	doit: function(func, value){
+		gunc(this.client, value);
 	},
 	chain: function(id){
 		Chain(this.client, id, []);
+	},
+	dict: function(name, values){
+		this.client.hmset(name, values);
 	},
 	quit: function(){
 		this.client.quit();
@@ -38,3 +45,14 @@ function Chain(client, id, users){
 			}
 		});
 }
+
+function DFS(client, value){
+	var marked=[];
+	for(var i in client.followers(value)){
+		if (!(i in marked)){
+			DFS(client, i);
+		}
+	}
+}
+
+

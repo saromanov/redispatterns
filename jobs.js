@@ -3,25 +3,55 @@ var redis = require('redis')
 
 //Implementation of simple job-queue
 
-var JobQueue = function(title){
+//This name for queue
+var JobQueue = function(queuetitle){
 	this.client = redis.createClient();
+	this.queuetitle = queuetitle
+	this.client.lrange('queue',0,-1, function(err, replies){
+		if(replies.indexOf(queuetitle) != -1)
+			console.err("This queue name already exist");
+		else {
+			this.client.lpush('queue', queuetitle, redis.print);
+		}
+
+	});
 }
+
 
 JobQueue.prototype.addJob = function(title, queueid){
 	this.client.hkeys('queue', function(err, replies){
-		var length = 0;
-		var contains = false;
-		replies.forEach(function(r,i){
-			if(r ==  replies) contains = true;
-			length += 1;
-		});
-		if(contains){
-			this.client.hset('queue', queueid, title, redis.print);
+		if(replies.indexOf(title)){
+			//Create current job
+			this.client.hset(title, 'status', 'wait');
+			this.client.hset(this.queuetitle, queueid, title, redis.print);
 		}
 
-	})
+	});
 }
 
-JobQueue.prototype.removeJob = function(id){
-
+JobQueue.prototype.startJob = function(title, queueid) {
+	this.client.hkeys('queue', function(err, replies){
+		if(replies.indexOf(title)){
+			changeJobStatus(title, 'wait', 'working');
+		}
+	});
 }
+
+
+JobQueue.prototype.removeJob = function(title){
+	this.client.hkeys('queue', function(err, replies){
+		if(replies.indexOf(title)){
+			changeJobStatus(title, 'working', 'delete');
+		}
+	});
+}
+
+var changeJobStatus = function(client, title, status, newstatus) {
+	client.hget(title, status, function(err, replies){
+			if(replies == status)
+				this.client.hset(title, 'status', newstatus, redis.print);
+	});
+}
+
+
+module.exports = JobQueue;
